@@ -1,0 +1,44 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <FrameLayout
+        android:id="@+id/map_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+
+    <com.github.dkus.fourflicks.view.EditInfoWindowLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/editInfoWindow"
+        android:layout_marginTop="50dp"
+        android:layout_centerHorizontal="true"
+        android:visibility="gone"
+        android:background="@android:color/white">
+
+        <EditText
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Demooooo"
+            android:id="@+id/editName"
+            android:layout_marginTop="8dp"
+            android:textSize="12sp"
+            android:inputType="text"
+            android:maxWidth="180dp"/>
+
+        <EditText
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Demo22222222222222"
+            android:id="@+id/editAddress"
+            android:layout_below="@id/editName"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            android:textSize="12sp"
+            android:inputType="text"
+            android:maxWidth="180dp"/>
+
+    </com.github.dkus.fourflicks.view.EditInfoWindowLayout>
+
+</RelativeLayout>
