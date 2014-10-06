@@ -9,7 +9,7 @@
 
     <string name="maps" translatable="false">AIzaSyBBi_HwoN0SgnAqm3mrsp-yzaFzuog3oZI</string>
 
-    <string name="my_location_error">My location not found\nConnect to internet or GPS</string>
+    <string name="my_location_error">Please enable location service</string>
 
     <string name="foursquare_error">Service temporarily unavailable</string>
 

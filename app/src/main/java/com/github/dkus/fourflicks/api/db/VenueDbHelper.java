@@ -28,7 +28,7 @@ public class VenueDbHelper implements DbHelper.OnTableDdlListener {
             VENUE_LNG
     };
 
-    public static final String SELECTION_BY_ID = VENUE_ID + "= ?";
+    public static final String SELECTION_BY_ID = VENUE_ID + " = ?";
 
     @Override
     public String getTableName() {

@@ -51,7 +51,7 @@ public class DbHandlerThread extends HandlerThread implements Handler.Callback {
         switch (msg.what) {
             case R.id.database_sync:
                 if (!isDBOpened()) openDB();
-                doSync(msg.obj);
+                doSync(msg.obj, msg.arg1 > 0);
                 break;
             case R.id.database_open:
                 if (!isDBOpened()) openDB();
@@ -82,13 +82,13 @@ public class DbHandlerThread extends HandlerThread implements Handler.Callback {
 
     public void sync(List<Venue> venues) {
 
-        sync(venues, mReceiver);
+        sync(venues, mReceiver, false);
 
     }
 
-    public void sync(Venue venue) {
+    public void sync(Venue venue, boolean forceUpdate) {
 
-        sync(venue, mReceiver);
+        sync(venue, mReceiver, forceUpdate);
 
     }
 
@@ -101,7 +101,6 @@ public class DbHandlerThread extends HandlerThread implements Handler.Callback {
     }
 
     private void openDB() {
-
         if (mDbHelper!=null) mDb=mDbHelper.getWritableDatabase();
 
     }
@@ -129,11 +128,12 @@ public class DbHandlerThread extends HandlerThread implements Handler.Callback {
 
     }
 
-    private void sync(Object o, Handler handler) {
+    private void sync(Object o, Handler handler, boolean forceUpdate) {
 
         Message msg = Message.obtain();
         msg.what = R.id.database_sync;
         msg.obj = o;
+        msg.arg1 = forceUpdate ? 1 : 0;
         handler.sendMessage(msg);
 
     }
@@ -155,47 +155,36 @@ public class DbHandlerThread extends HandlerThread implements Handler.Callback {
 
     }
 
-    private void doSync(Object o) {
+    private void doSync(Object o, boolean forceUpdate) {
 
         if (o instanceof List) {
 
             List<Venue> venues = (List<Venue>)o;
             for (Venue venue : venues) {
-                doDbSync(venue);
+                doDbSync(venue, forceUpdate);
             }
 
         } else {
-            if (o!=null) doDbSync((Venue) o);
+            if (o!=null) doDbSync((Venue) o, forceUpdate);
         }
 
         synced();
 
     }
 
-    private void doDbSync(Venue venue) {
+    private void doDbSync(Venue venue, boolean forceUpdate) {
 
         Venue tmp = mDbCache.get(venue.getId());
 
         if (tmp!=null) {
 
-            if (!venue.equals(tmp)) {
+            Logger.log("Already in cache venue="+venue);
 
-                Logger.log("Difference << tmp="+tmp);
-                Logger.log("Difference >> venue="+venue);
+            if (!venue.equals(tmp) && !forceUpdate) {
 
-                String[] selectionArgs = {venue.getId()};
-                int count=mDb.update(
-                        VenueDbHelper.TABLE_VENUE,
-                        getContentValues(venue),
-                        VenueDbHelper.SELECTION_BY_ID,
-                        selectionArgs);
-                if (count==1) {
-                    Logger.log("Updated database for venue ID="+venue.getId());
-                    tmp.setName(venue.getName());
-                    tmp.setLocation(venue.getLocation());
-                }
-            } else {
-                Logger.log("Database has cached record for venue ID="+venue.getId());
+                Logger.log("Difference(1) << 1="+tmp, DbHandlerThread.class);
+                Logger.log("Difference(1) >> 2="+venue, DbHandlerThread.class);
+                venue=tmp;
             }
 
         } else {
@@ -207,26 +196,43 @@ public class DbHandlerThread extends HandlerThread implements Handler.Callback {
                     selectionArgs,
                     null, null, null);
 
-            boolean doInsert = !cursor.moveToNext();
-            cursor.close();
+            if (cursor.moveToNext()) {
 
-            if (doInsert) {
+                Venue tmp1 = new Venue();
+                tmp1.setId(cursor.getString(0));
+                tmp1.setName(cursor.getString(1));
+                Venue.Location location = new Venue.Location();
+                location.setAddress(cursor.getString(2));
+                location.setLat(cursor.getDouble(3));
+                location.setLng(cursor.getDouble(4));
+                tmp1.setLocation(location);
+                cursor.close();
+
+                if (!venue.equals(tmp1) && !forceUpdate) {
+                    Logger.log("Difference(2) << 1="+tmp1, DbHandlerThread.class);
+                    Logger.log("Difference(2) >> 2="+venue, DbHandlerThread.class);
+                    venue=tmp1;
+                }
+
+            } else {
                 long id = mDb.insert(VenueDbHelper.TABLE_VENUE, null, getContentValues(venue));
                 if (id!=-1) {
                     mDbCache.put(venue.getId(), venue);
-                    Logger.log("Inserted database with generated ID="+id);
+                    Logger.log("Inserted database with generated ID="+id, DbHandlerThread.class);
                 }
-            } else {
-                Logger.log("Database has selected record for venue ID="+venue.getId());
-                int count=mDb.update(
-                        VenueDbHelper.TABLE_VENUE,
-                        getContentValues(venue),
-                        VenueDbHelper.SELECTION_BY_ID,
-                        selectionArgs);
-                if (count==1) {
-                    Logger.log("Updated database after select for venue ID="+venue.getId());
-                    mDbCache.put(venue.getId(), venue);
-                }
+            }
+        }
+
+        if (forceUpdate) {
+            String[] selectionArgs = {venue.getId()};
+            int count=mDb.update(
+                    VenueDbHelper.TABLE_VENUE,
+                    getContentValues(venue),
+                    VenueDbHelper.SELECTION_BY_ID,
+                    selectionArgs);
+            if (count==1) {
+                Logger.log("Updated database for venue ID="+venue.getId());
+                mDbCache.put(venue.getId(), venue);
             }
         }
 

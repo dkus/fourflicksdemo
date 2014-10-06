@@ -16,7 +16,7 @@ public class DbHelper extends SQLiteOpenHelper {
     private static final int DATABASE_VERSION = 1;
 
     //Database name
-    private static final String DATABASE_NAME = "ffdemo.db";
+    private static final String DATABASE_NAME = "ffdemo";
 
     private List<OnTableDdlListener> mOnTableDdlListeners;
 
@@ -31,7 +31,7 @@ public class DbHelper extends SQLiteOpenHelper {
     public void onCreate(SQLiteDatabase db) {
 
         for (OnTableDdlListener onTableDdlListener : mOnTableDdlListeners) {
-            Logger.log("Creating table "+onTableDdlListener.getTableName());
+            Logger.log("Creating table "+onTableDdlListener.getTableName(), DbHelper.class);
             db.execSQL(onTableDdlListener.createTableDdl());
         }
 

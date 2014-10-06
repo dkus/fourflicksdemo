@@ -2,7 +2,6 @@ package com.github.dkus.fourflicks.fragment;
 
 import android.app.Activity;
 import android.location.Location;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -38,9 +37,7 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.VisibleRegion;
 
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 import retrofit.Callback;
 import retrofit.RetrofitError;
@@ -61,6 +58,7 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
     private LatLng mLatLng;
     private LatLng mLatLngEdge;
     private Marker mClicked;
+    private LatLngBounds mLatLngBounds;
 
     private float[] mDistance = new float[1];
 
@@ -77,7 +75,7 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
 
     private Handler mHandler;
 
-    private HashMap<Marker, Venue> mBoundMarkers = new HashMap<Marker, Venue>();
+    private Map<LatLng, Venue> mBoundMarkers = new HashMap<LatLng, Venue>();
 
     @Override
     public void onAttach(Activity activity) {
@@ -203,21 +201,23 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
     public void onMyLocationChange(Location location) {
 
         if (mLatLng==null) {
-            mLatLng=new LatLng(location.getLatitude(), location.getLongitude());
-            if(mMap != null){
+            mLatLng = new LatLng(location.getLatitude(), location.getLongitude());
+            if (mMap != null) {
                 mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(mLatLng, 15f), this);
             }
-        } else {
-            mLatLng=new LatLng(location.getLatitude(), location.getLongitude());
+            return;
         }
+        mLatLng=new LatLng(location.getLatitude(), location.getLongitude());
+        mLatLngBounds=mMap.getProjection().getVisibleRegion().latLngBounds;
 
     }
 
     @Override
     public void onCameraChange(CameraPosition cameraPosition) {
 
+        VisibleRegion visibleRegion = mMap.getProjection().getVisibleRegion();
         if (mLatLngEdge==null) {
-            mLatLngEdge=mMap.getProjection().getVisibleRegion().farLeft;
+            mLatLngEdge=visibleRegion.farLeft;
         }
 
         Location.distanceBetween(
@@ -228,9 +228,9 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
         );
 
         if (mDistance[0]>1000) {
-            mLatLng=cameraPosition.target;
             mLatLngEdge=mMap.getProjection().getVisibleRegion().farLeft;
             callService(prepareServiceCall());
+            mLatLngBounds=mMap.getProjection().getVisibleRegion().latLngBounds;
         }
 
     }
@@ -251,51 +251,27 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
         switch (msg.what) {
             case R.id.database_syncing:
                 Venue venue = (Venue)msg.obj;
-                if (venue!=null) {
-                    Marker marker = mMap.addMarker(new MarkerOptions().position(
+                LatLng latLng = new LatLng(venue.getLocation().getLat(),
+                        venue.getLocation().getLng());
+                if (mLatLngBounds.contains(latLng)) {
+                    Logger.log("Marker in bound="+venue);
+                    mMap.addMarker(new MarkerOptions().position(
                             new LatLng(venue.getLocation().getLat(),
                                     venue.getLocation().getLng())));
-                    if (mBoundMarkers.get(marker)!=null) {
-                        Logger.log("Marker already exist and it is in bound");
-                    } else {
-                        mBoundMarkers.put(marker, venue);
-                        Logger.log("Marker added in bound");
+                    mBoundMarkers.put(latLng, venue);
+                } else {
+                    Logger.log("Marker out of bound="+venue);
+                    if (mBoundMarkers.containsKey(latLng)) {
+                        mBoundMarkers.remove(latLng);
                     }
                 }
                 break;
             case R.id.database_synced:
-                Logger.log("Number of in bound markers (before) ="+mBoundMarkers.size());
-                new AsyncTask<LatLngBounds, Marker, Void>() {
-
-                    @Override
-                    protected Void doInBackground(LatLngBounds... params) {
-
-                        for (Iterator<Marker> i = mBoundMarkers.keySet().iterator(); i.hasNext();) {
-                            if (!params[0].contains(i.next().getPosition())) {
-                                publishProgress(i.next());
-                                Logger.log("Marker out of bound="+i.next());
-                                i.remove();
-                            }
-                        }
-                        return null;
-                    }
-
-                    @Override
-                    protected void onProgressUpdate(Marker... values) {
-                        values[0].remove();
-                        Logger.log("Removed out of bound marker="+values[0]);
-                    }
-
-                    @Override
-                    protected void onPostExecute(Void aVoid) {
-                        mSyncing=false;
-                        if (mActionMode!=null) {
-                            mActionMode.invalidate();
-                        }
-                        Logger.log("Number of in bound markers (after) ="+mBoundMarkers.size());
-                    }
-                }.execute(mMap.getProjection().getVisibleRegion().latLngBounds);
-
+                mSyncing=false;
+                Logger.log("Bounded markers="+mBoundMarkers.size());
+                if (mActionMode!=null) {
+                    mActionMode.invalidate();
+                }
                 break;
         }
 
@@ -312,10 +288,16 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
     public View getInfoContents(Marker marker) {
 
         View v = LayoutInflater.from(getActivity()).inflate(R.layout.infowindow_map, null);
-        ((TextView)v.findViewById(R.id.name))
-                .setText(mBoundMarkers.get(marker).getName());
-        ((TextView)v.findViewById(R.id.address))
-                .setText(mBoundMarkers.get(marker).getLocation().getAddress());
+        if (v!=null) {
+            TextView name = ((TextView)v.findViewById(R.id.name));
+            TextView address = ((TextView)v.findViewById(R.id.address));
+            if (name!=null) {
+                name.setText(mBoundMarkers.get(marker.getPosition()).getName());
+            }
+            if (address!=null) {
+                address.setText(mBoundMarkers.get(marker.getPosition()).getLocation().getAddress());
+            }
+        }
         return v;
 
     }
@@ -336,11 +318,13 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
 
         if (mActionMode!=null && !mSyncing) {
             mActionMode.finish();
+            mActionMode=null;
         }
 
         if (mEditInfoWindowLayout!=null && mEditInfoWindowLayout.getVisibility()==View.VISIBLE) {
             mEditInfoWindowLayout.toggleAnimation();
         }
+        mClicked=null;
 
     }
 
@@ -379,20 +363,26 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
 
             case R.id.edit:
 
-                mEditInfoWindowLayout.toggleAnimation();
-                mSyncing=false;
-                actionMode.invalidate();
+                if(mClicked!=null) {
+                    mEditInfoWindowLayout.setName(
+                            mBoundMarkers.get(mClicked.getPosition()).getName());
+                    mEditInfoWindowLayout.setAddress(
+                            mBoundMarkers.get(mClicked.getPosition()).getLocation().getAddress());
+                    mEditInfoWindowLayout.toggleAnimation();
+                    mSyncing=false;
+                    actionMode.invalidate();
+                }
 
                 break;
             case R.id.save:
 
                 mSyncing=true;
                 actionMode.invalidate();
-                mBoundMarkers.get(mClicked)
+                mBoundMarkers.get(mClicked.getPosition())
                         .setName(mEditInfoWindowLayout.getName());
-                mBoundMarkers.get(mClicked).getLocation()
+                mBoundMarkers.get(mClicked.getPosition()).getLocation()
                         .setAddress(mEditInfoWindowLayout.getAddress());
-                mDbHandlerThread.sync(mBoundMarkers.get(mClicked));
+                mDbHandlerThread.sync(mBoundMarkers.get(mClicked.getPosition()), true);
                 mClicked.hideInfoWindow();
                 mClicked.showInfoWindow();
 
@@ -437,7 +427,7 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
 
     private void callService(final String radius) {
 
-        if (!mSyncing) {
+        if (!mSyncing && radius!=null) {
             mHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
@@ -455,6 +445,11 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
     private String prepareServiceCall() {
 
         VisibleRegion visibleRegion = mMap.getProjection().getVisibleRegion();
+
+        if (!visibleRegion.latLngBounds.contains(mLatLng)) {
+            Logger.log("My location is out of bound");
+            return null;
+        }
 
         Location.distanceBetween(visibleRegion.farLeft.latitude,
                 visibleRegion.farLeft.longitude,
@@ -479,31 +474,9 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
         double radius = Math.max(Math.max(d1, d2), Math.min(d3, d4));
 
         Logger.log("radius="+radius, MapFragment.class);
-        if (mMap.getCameraPosition().zoom < 15f) {
-            radius = Math.max(10, radius*0.75);
-            Logger.log("radius new="+radius, MapFragment.class);
-        }
 
         return String.valueOf(radius);
 
-    }
-
-    private static class MarkerSyncTask extends AsyncTask<LatLngBounds, Marker, Void> {
-
-        @Override
-        protected Void doInBackground(LatLngBounds... params) {
-            return null;
-        }
-
-        @Override
-        protected void onProgressUpdate(Marker... values) {
-            super.onProgressUpdate(values);
-        }
-
-        @Override
-        protected void onPostExecute(Void aVoid) {
-            super.onPostExecute(aVoid);
-        }
     }
 
 }

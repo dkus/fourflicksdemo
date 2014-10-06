@@ -20,7 +20,6 @@
         <EditText
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Demooooo"
             android:id="@+id/editName"
             android:layout_marginTop="8dp"
             android:textSize="12sp"
@@ -30,7 +29,6 @@
         <EditText
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Demo22222222222222"
             android:id="@+id/editAddress"
             android:layout_below="@id/editName"
             android:layout_marginTop="8dp"

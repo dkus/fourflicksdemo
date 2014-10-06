@@ -102,7 +102,7 @@ public class Venue {
         return !(o==null || !(o instanceof Venue)) &&
                 Utils.areEquals(mId, ((Venue)o).getId()) &&
                 Utils.areEquals(mName, ((Venue)o).getName()) &&
-                Utils.areEquals(mLocation, ((Venue) o).getLocation().getAddress());
+                Utils.areEquals(mLocation, ((Venue) o).getLocation());
     }
 
 }
