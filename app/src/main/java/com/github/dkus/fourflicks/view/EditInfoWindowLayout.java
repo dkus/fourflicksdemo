@@ -1,6 +1,5 @@
 package com.github.dkus.fourflicks.view;
 
-
 import android.content.Context;
 import android.util.AttributeSet;
 import android.view.animation.Animation;
@@ -69,15 +68,15 @@ public class EditInfoWindowLayout extends RelativeLayout {
 
     }
 
-    public void getName() {
+    public String getName() {
 
-        ((EditText)findViewById(R.id.editName)).getText();
+        return ((EditText)findViewById(R.id.editName)).getText().toString();
 
     }
 
-    public void getAddress() {
+    public String getAddress() {
 
-        ((EditText)findViewById(R.id.editAddress)).getText();
+        return ((EditText)findViewById(R.id.editAddress)).getText().toString();
 
     }
 

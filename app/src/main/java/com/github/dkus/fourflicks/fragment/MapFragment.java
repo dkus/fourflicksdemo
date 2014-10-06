@@ -2,6 +2,7 @@ package com.github.dkus.fourflicks.fragment;
 
 import android.app.Activity;
 import android.location.Location;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -31,9 +32,15 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.VisibleRegion;
+
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
 import retrofit.Callback;
 import retrofit.RetrofitError;
@@ -51,12 +58,10 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
 
     private GoogleMap mMap;
     private SupportMapFragment mSupportMapFragment;
-    private Location mLocation;
-    private Location mLocationToMoveFrom;
-    private LatLng mFarLeftToMoveFrom;
+    private LatLng mLatLng;
+    private LatLng mLatLngEdge;
+    private Marker mClicked;
 
-    private final float mThresholdToMove = 50f; //50m
-    private final float mFarThresholdToMove = 1000f; //1000m
     private float[] mDistance = new float[1];
 
     private ServiceHandler mServiceHandler;
@@ -68,13 +73,11 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
 
     private Toast mToast;
 
-    private String mLocationName="test";
-    private String mLocationAddress="TEST";
-
     private EditInfoWindowLayout mEditInfoWindowLayout;
 
     private Handler mHandler;
 
+    private HashMap<Marker, Venue> mBoundMarkers = new HashMap<Marker, Venue>();
 
     @Override
     public void onAttach(Activity activity) {
@@ -182,7 +185,7 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
 
         switch (item.getItemId()) {
             case R.id.mRefresh:
-                if (mLocation==null) {
+                if (mLatLng==null) {
                     mToast=Toast.makeText(getActivity(),
                             R.string.my_location_error, Toast.LENGTH_SHORT);
                     mToast.show();
@@ -199,31 +202,34 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
     @Override
     public void onMyLocationChange(Location location) {
 
-        if (mLocation==null) {
-            LatLng loc = new LatLng(location.getLatitude(), location.getLongitude());
+        if (mLatLng==null) {
+            mLatLng=new LatLng(location.getLatitude(), location.getLongitude());
             if(mMap != null){
-                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(loc, 15.0f), this);
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(mLatLng, 15f), this);
             }
+        } else {
+            mLatLng=new LatLng(location.getLatitude(), location.getLongitude());
         }
-        mLocation=location;
 
     }
 
     @Override
     public void onCameraChange(CameraPosition cameraPosition) {
 
-        if (mFarLeftToMoveFrom==null) {
-            mFarLeftToMoveFrom=mMap.getProjection().getVisibleRegion().farLeft;
+        if (mLatLngEdge==null) {
+            mLatLngEdge=mMap.getProjection().getVisibleRegion().farLeft;
         }
 
         Location.distanceBetween(
-                mFarLeftToMoveFrom.latitude, mFarLeftToMoveFrom.longitude,
+                mLatLngEdge.latitude, mLatLngEdge.longitude,
                 mMap.getProjection().getVisibleRegion().farLeft.latitude,
                 mMap.getProjection().getVisibleRegion().farLeft.longitude,
                 mDistance
         );
-        if (mDistance[0]>mFarThresholdToMove) {
-            mFarLeftToMoveFrom=mMap.getProjection().getVisibleRegion().farLeft;
+
+        if (mDistance[0]>1000) {
+            mLatLng=cameraPosition.target;
+            mLatLngEdge=mMap.getProjection().getVisibleRegion().farLeft;
             callService(prepareServiceCall());
         }
 
@@ -249,13 +255,47 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
                     Marker marker = mMap.addMarker(new MarkerOptions().position(
                             new LatLng(venue.getLocation().getLat(),
                                     venue.getLocation().getLng())));
+                    if (mBoundMarkers.get(marker)!=null) {
+                        Logger.log("Marker already exist and it is in bound");
+                    } else {
+                        mBoundMarkers.put(marker, venue);
+                        Logger.log("Marker added in bound");
+                    }
                 }
                 break;
             case R.id.database_synced:
-                mSyncing=false;
-                if (mActionMode!=null) {
-                    mActionMode.invalidate();
-                }
+                Logger.log("Number of in bound markers (before) ="+mBoundMarkers.size());
+                new AsyncTask<LatLngBounds, Marker, Void>() {
+
+                    @Override
+                    protected Void doInBackground(LatLngBounds... params) {
+
+                        for (Iterator<Marker> i = mBoundMarkers.keySet().iterator(); i.hasNext();) {
+                            if (!params[0].contains(i.next().getPosition())) {
+                                publishProgress(i.next());
+                                Logger.log("Marker out of bound="+i.next());
+                                i.remove();
+                            }
+                        }
+                        return null;
+                    }
+
+                    @Override
+                    protected void onProgressUpdate(Marker... values) {
+                        values[0].remove();
+                        Logger.log("Removed out of bound marker="+values[0]);
+                    }
+
+                    @Override
+                    protected void onPostExecute(Void aVoid) {
+                        mSyncing=false;
+                        if (mActionMode!=null) {
+                            mActionMode.invalidate();
+                        }
+                        Logger.log("Number of in bound markers (after) ="+mBoundMarkers.size());
+                    }
+                }.execute(mMap.getProjection().getVisibleRegion().latLngBounds);
+
                 break;
         }
 
@@ -272,8 +312,10 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
     public View getInfoContents(Marker marker) {
 
         View v = LayoutInflater.from(getActivity()).inflate(R.layout.infowindow_map, null);
-        ((TextView)v.findViewById(R.id.name)).setText(mLocationName);
-        ((TextView)v.findViewById(R.id.address)).setText(mLocationAddress);
+        ((TextView)v.findViewById(R.id.name))
+                .setText(mBoundMarkers.get(marker).getName());
+        ((TextView)v.findViewById(R.id.address))
+                .setText(mBoundMarkers.get(marker).getLocation().getAddress());
         return v;
 
     }
@@ -284,7 +326,7 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
         if (mActionMode==null && getActivity()!=null) {
             mActionMode = ((ActionBarActivity)getActivity()).startSupportActionMode(this);
         }
-
+        mClicked=marker;
         return false;
 
     }
@@ -323,7 +365,8 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
                 getString(R.string.edit), getString(R.string.cancel)));
 
         MenuItem save = actionMode.getMenu().findItem(R.id.save);
-        save.setEnabled(Utils.toogle(mSyncing && edit.isEnabled(), true, false));
+        save.setEnabled(Utils.toogle(
+                getString(R.string.edit).equals(edit.getTitle()), true, false));
 
         return true;
 
@@ -345,11 +388,16 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
 
                 mSyncing=true;
                 actionMode.invalidate();
-                mDbHandlerThread.sync((Venue)null);
+                mBoundMarkers.get(mClicked)
+                        .setName(mEditInfoWindowLayout.getName());
+                mBoundMarkers.get(mClicked).getLocation()
+                        .setAddress(mEditInfoWindowLayout.getAddress());
+                mDbHandlerThread.sync(mBoundMarkers.get(mClicked));
+                mClicked.hideInfoWindow();
+                mClicked.showInfoWindow();
 
                 break;
         }
-
 
         return true;
     }
@@ -394,7 +442,7 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
                 @Override
                 public void run() {
                     mServiceHandler.getFoursquareService().getNearbyObjects(
-                            Utils.formatLocation(mLocation.getLatitude(), mLocation.getLongitude()),
+                            Utils.formatLocation(mLatLng.latitude, mLatLng.longitude),
                             radius, MapFragment.this);
                     mSyncing=true;
                     getActivity().invalidateOptionsMenu();
@@ -410,30 +458,52 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
 
         Location.distanceBetween(visibleRegion.farLeft.latitude,
                 visibleRegion.farLeft.longitude,
-                mLocation.getLatitude(), mLocation.getLongitude(), mDistance);
+                mLatLng.latitude, mLatLng.longitude, mDistance);
         double d1=mDistance[0];
 
         Location.distanceBetween(visibleRegion.farRight.latitude,
                 visibleRegion.farRight.longitude,
-                mLocation.getLatitude(), mLocation.getLongitude(), mDistance);
+                mLatLng.latitude, mLatLng.longitude, mDistance);
         double d2=mDistance[0];
 
         Location.distanceBetween(visibleRegion.nearLeft.latitude,
                 visibleRegion.nearLeft.longitude,
-                mLocation.getLatitude(), mLocation.getLongitude(), mDistance);
+                mLatLng.latitude, mLatLng.longitude, mDistance);
         double d3=mDistance[0];
 
         Location.distanceBetween(visibleRegion.nearRight.latitude,
                 visibleRegion.nearRight.longitude,
-                mLocation.getLatitude(), mLocation.getLongitude(), mDistance);
+                mLatLng.latitude, mLatLng.longitude, mDistance);
         double d4=mDistance[0];
 
-        double radius = Math.min(Math.min(d1, d2), Math.min(d3, d4));
+        double radius = Math.max(Math.max(d1, d2), Math.min(d3, d4));
 
         Logger.log("radius="+radius, MapFragment.class);
+        if (mMap.getCameraPosition().zoom < 15f) {
+            radius = Math.max(10, radius*0.75);
+            Logger.log("radius new="+radius, MapFragment.class);
+        }
 
         return String.valueOf(radius);
 
+    }
+
+    private static class MarkerSyncTask extends AsyncTask<LatLngBounds, Marker, Void> {
+
+        @Override
+        protected Void doInBackground(LatLngBounds... params) {
+            return null;
+        }
+
+        @Override
+        protected void onProgressUpdate(Marker... values) {
+            super.onProgressUpdate(values);
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+        }
     }
 
 }

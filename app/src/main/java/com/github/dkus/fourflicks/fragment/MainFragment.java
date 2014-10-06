@@ -39,6 +39,5 @@ public class MainFragment extends Fragment implements View.OnClickListener {
                     new MapFragment(),
                     MapFragment.FRAGMENT_TAG).addToBackStack(MapFragment.FRAGMENT_TAG).commit();
         }
-
     }
 }

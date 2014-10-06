@@ -19,9 +19,9 @@ public class Utils {
 
     }
 
-    public static <T> boolean areEquals(T first, T second) {
+    public static boolean areEquals(Object first, Object second) {
 
-        return first!=null && first.equals(second);
+        return first==null ? second==null : first.equals(second);
 
     }
 

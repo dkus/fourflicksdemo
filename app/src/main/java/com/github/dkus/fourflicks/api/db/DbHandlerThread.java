@@ -180,8 +180,10 @@ public class DbHandlerThread extends HandlerThread implements Handler.Callback {
 
             if (!venue.equals(tmp)) {
 
-                String[] selectionArgs = {venue.getId()};
+                Logger.log("Difference << tmp="+tmp);
+                Logger.log("Difference >> venue="+venue);
 
+                String[] selectionArgs = {venue.getId()};
                 int count=mDb.update(
                         VenueDbHelper.TABLE_VENUE,
                         getContentValues(venue),
@@ -199,7 +201,6 @@ public class DbHandlerThread extends HandlerThread implements Handler.Callback {
         } else {
 
             String[] selectionArgs = {venue.getId()};
-
             Cursor cursor = mDb.query(VenueDbHelper.TABLE_VENUE,
                     VenueDbHelper.PROJECTION_ALL,
                     VenueDbHelper.SELECTION_BY_ID,
@@ -216,10 +217,17 @@ public class DbHandlerThread extends HandlerThread implements Handler.Callback {
                     Logger.log("Inserted database with generated ID="+id);
                 }
             } else {
-                mDbCache.put(venue.getId(), venue);
                 Logger.log("Database has selected record for venue ID="+venue.getId());
+                int count=mDb.update(
+                        VenueDbHelper.TABLE_VENUE,
+                        getContentValues(venue),
+                        VenueDbHelper.SELECTION_BY_ID,
+                        selectionArgs);
+                if (count==1) {
+                    Logger.log("Updated database after select for venue ID="+venue.getId());
+                    mDbCache.put(venue.getId(), venue);
+                }
             }
-
         }
 
         syncing(venue);

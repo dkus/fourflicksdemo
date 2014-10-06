@@ -85,19 +85,24 @@ public class Venue {
         public String toString() {
             return "[address="+mAddress+", lat="+mLat+", lng="+mLng+"]";
         }
+
+        @Override
+        public boolean equals(Object o) {
+
+            return !(o==null || !(o instanceof Location)) &&
+                    Utils.areEquals(mAddress, ((Location)o).getAddress()) &&
+                    Utils.areEquals(mLat, ((Location)o).getLat()) &&
+                    Utils.areEquals(mLng, ((Location) o).getLng());
+        }
     }
 
     @Override
     public boolean equals(Object o) {
 
-        if (o==null || !(o instanceof Venue)) return false;
-
-        return Utils.areEquals(mId, ((Venue)o).getId()) &&
+        return !(o==null || !(o instanceof Venue)) &&
+                Utils.areEquals(mId, ((Venue)o).getId()) &&
                 Utils.areEquals(mName, ((Venue)o).getName()) &&
-                Utils.areEquals(
-                        mLocation != null ? mLocation.getAddress() : null,
-                        ((Venue) o).getLocation() != null ? ((Venue) o).getLocation().getAddress() :
-                                null);
+                Utils.areEquals(mLocation, ((Venue) o).getLocation().getAddress());
     }
 
 }

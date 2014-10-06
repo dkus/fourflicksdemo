@@ -12,6 +12,8 @@ import com.github.dkus.fourflicks.R;
 
 public class MainLayout extends RelativeLayout {
 
+    private boolean mAnimate=true;
+
     public MainLayout(Context context) {
         super(context);
     }
@@ -29,24 +31,34 @@ public class MainLayout extends RelativeLayout {
 
         super.onAttachedToWindow();
 
-        TranslateAnimation translateAnimation =
-                new TranslateAnimation(
-                        0, 0, 0, 0,
-                        Animation.RELATIVE_TO_PARENT, -1, Animation.RELATIVE_TO_SELF, 0);
-        translateAnimation.setInterpolator(new DecelerateInterpolator());
-        translateAnimation.setDuration(1000);
+        if (mAnimate) {
+            TranslateAnimation translateAnimation =
+                    new TranslateAnimation(
+                            0, 0, 0, 0,
+                            Animation.RELATIVE_TO_PARENT, -1, Animation.RELATIVE_TO_SELF, 0);
+            translateAnimation.setInterpolator(new DecelerateInterpolator());
+            translateAnimation.setDuration(1000);
 
-        TranslateAnimation translateAnimation2 =
-                new TranslateAnimation(
-                        0, 0, 0, 0,
-                        Animation.RELATIVE_TO_PARENT, 1, Animation.RELATIVE_TO_SELF, 0);
-        translateAnimation2.setInterpolator(new DecelerateInterpolator());
-        translateAnimation2.setDuration(1000);
+            TranslateAnimation translateAnimation2 =
+                    new TranslateAnimation(
+                            0, 0, 0, 0,
+                            Animation.RELATIVE_TO_PARENT, 1, Animation.RELATIVE_TO_SELF, 0);
+            translateAnimation2.setInterpolator(new DecelerateInterpolator());
+            translateAnimation2.setDuration(1000);
 
-        findViewById(R.id.locations).startAnimation(translateAnimation);
-        findViewById(R.id.takePicture).startAnimation(translateAnimation2);
+            findViewById(R.id.locations).startAnimation(translateAnimation);
+            findViewById(R.id.takePicture).startAnimation(translateAnimation2);
 
+            mAnimate=false;
+        }
+    }
 
+    public boolean isAnimate() {
+        return mAnimate;
+    }
+
+    public void setAnimate(boolean animate) {
+        this.mAnimate = animate;
     }
 
 }
