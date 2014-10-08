@@ -40,6 +40,8 @@ public class TaskFragment extends Fragment {
 
         mDbHandlerThread.setCallBack(null);
         mDbHandlerThread.quitDBAndThread();
+        
+        mUploadHandlerThread.setCallBack(null);
         mUploadHandlerThread.quitUploader();
 
         super.onDestroy();
