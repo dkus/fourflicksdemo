@@ -1,11 +1,11 @@
 package com.github.dkus.fourflicks.fragment;
 
-import android.app.Activity;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 
 import com.github.dkus.fourflicks.api.db.DbHandlerThread;
 import com.github.dkus.fourflicks.api.service.ServiceHandler;
+import com.github.dkus.fourflicks.api.service.UploadHandlerThread;
 
 
 public class TaskFragment extends Fragment {
@@ -14,13 +14,8 @@ public class TaskFragment extends Fragment {
 
     private DbHandlerThread mDbHandlerThread;
     private ServiceHandler mServiceHandler;
+    private UploadHandlerThread mUploadHandlerThread;
 
-    @Override
-    public void onAttach(Activity activity) {
-
-        super.onAttach(activity);
-
-    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -32,15 +27,20 @@ public class TaskFragment extends Fragment {
         mDbHandlerThread = new DbHandlerThread(getActivity());
         mDbHandlerThread.start();
 
+        mUploadHandlerThread = new UploadHandlerThread(getActivity());
+        mUploadHandlerThread.start();
+
         mServiceHandler = new ServiceHandler();
 
     }
+
 
     @Override
     public void onDestroy() {
 
         mDbHandlerThread.setCallBack(null);
         mDbHandlerThread.quitDBAndThread();
+        mUploadHandlerThread.quitUploader();
 
         super.onDestroy();
     }
@@ -51,6 +51,10 @@ public class TaskFragment extends Fragment {
 
     public ServiceHandler getServiceHandler() {
         return mServiceHandler;
+    }
+
+    public UploadHandlerThread getUploadHandlerThread() {
+        return mUploadHandlerThread;
     }
 
 }

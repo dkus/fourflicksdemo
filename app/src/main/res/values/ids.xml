@@ -8,10 +8,13 @@
     <item type="id" name="database_open"/>
     <item type="id" name="database_quit"/>
 
-    <!-- maps id's-->
-    <item type="id" name="maps_markers_fetch"/>
-    <item type="id" name="maps_markers_loaded"/>
-    <item type="id" name="maps_swap_cursor"/>
-    <item type="id" name="maps_markers_count"/>
+    <!-- upload operations -->
+    <item type="id" name="upload"/>
+    <item type="id" name="uploading"/>
+    <item type="id" name="uploaded"/>
+    <item type="id" name="upload_error"/>
+    <item type="id" name="uploader_quit"/>
+    <item type="id" name="upload_authorize"/>
+    <item type="id" name="upload_authorized"/>
 
 </resources>

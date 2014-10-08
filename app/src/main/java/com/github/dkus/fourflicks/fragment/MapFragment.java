@@ -1,6 +1,5 @@
 package com.github.dkus.fourflicks.fragment;
 
-import android.app.Activity;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
@@ -44,7 +43,8 @@ import retrofit.RetrofitError;
 import retrofit.client.Response;
 
 
-public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChangeListener,
+public class MapFragment extends Fragment
+        implements GoogleMap.OnMyLocationChangeListener,
         Handler.Callback, Callback<FoursquareResponse>,
         GoogleMap.InfoWindowAdapter, GoogleMap.OnMarkerClickListener,
         GoogleMap.OnMapClickListener, GoogleMap.OnCameraChangeListener,
@@ -78,23 +78,13 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
     private Map<LatLng, Venue> mBoundMarkers = new HashMap<LatLng, Venue>();
 
     @Override
-    public void onAttach(Activity activity) {
-
-        super.onAttach(activity);
-
-        mServiceHandler = ((MainActivity)activity).getServiceHandler();
-        mDbHandlerThread = ((MainActivity)activity).getDbHandlerThread();
-
-    }
-
-    @Override
     public void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
 
         setHasOptionsMenu(true);
-        mHandler=new Handler(this);
-        mDbHandlerThread.setCallBack(mHandler);
+
+        mBoundMarkers.clear();
 
     }
 
@@ -115,6 +105,19 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
         }
 
         return view;
+
+    }
+
+    @Override
+    public void onActivityCreated(Bundle savedInstanceState) {
+
+        super.onActivityCreated(savedInstanceState);
+
+        mServiceHandler = ((MainActivity)getActivity()).getServiceHandler();
+        mDbHandlerThread = ((MainActivity)getActivity()).getDbHandlerThread();
+
+        mHandler=new Handler(this);
+        mDbHandlerThread.setCallBack(mHandler);
 
     }
 
@@ -140,21 +143,20 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
     }
 
     @Override
+    public void onPause() {
+
+        mDbHandlerThread.setCallBack(null);
+
+        super.onPause();
+    }
+
+    @Override
     public void onDestroyView() {
 
         if (mToast!=null) mToast.cancel();
 
         super.onDestroyView();
 
-    }
-
-    @Override
-    public void onDetach() {
-
-        mDbHandlerThread=null;
-        mServiceHandler=null;
-
-        super.onDetach();
     }
 
     @Override
@@ -219,6 +221,7 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
         if (mLatLngEdge==null) {
             mLatLngEdge=visibleRegion.farLeft;
         }
+        mLatLngBounds=mMap.getProjection().getVisibleRegion().latLngBounds;
 
         Location.distanceBetween(
                 mLatLngEdge.latitude, mLatLngEdge.longitude,
@@ -230,7 +233,6 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
         if (mDistance[0]>1000) {
             mLatLngEdge=mMap.getProjection().getVisibleRegion().farLeft;
             callService(prepareServiceCall());
-            mLatLngBounds=mMap.getProjection().getVisibleRegion().latLngBounds;
         }
 
     }
@@ -254,13 +256,11 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
                 LatLng latLng = new LatLng(venue.getLocation().getLat(),
                         venue.getLocation().getLng());
                 if (mLatLngBounds.contains(latLng)) {
-                    Logger.log("Marker in bound="+venue);
                     mMap.addMarker(new MarkerOptions().position(
                             new LatLng(venue.getLocation().getLat(),
                                     venue.getLocation().getLng())));
                     mBoundMarkers.put(latLng, venue);
                 } else {
-                    Logger.log("Marker out of bound="+venue);
                     if (mBoundMarkers.containsKey(latLng)) {
                         mBoundMarkers.remove(latLng);
                     }
@@ -295,7 +295,10 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
                 name.setText(mBoundMarkers.get(marker.getPosition()).getName());
             }
             if (address!=null) {
-                address.setText(mBoundMarkers.get(marker.getPosition()).getLocation().getAddress());
+                address.setText(mBoundMarkers.get(
+                        marker.getPosition()).getLocation() != null ?
+                        mBoundMarkers.get(marker.getPosition()).getLocation().getAddress()
+                        : null);
             }
         }
         return v;
@@ -340,16 +343,16 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
     public boolean onPrepareActionMode(ActionMode actionMode, Menu menu) {
 
         MenuItem refresh = menu.findItem(R.id.cRefresh);
-        refresh.setVisible(Utils.toogle(!mSyncing, true, false));
+        refresh.setVisible(Utils.toggle(!mSyncing, true, false));
         refresh.setActionView(R.layout.actionbar_progress);
 
         MenuItem edit = menu.findItem(R.id.edit);
-        edit.setEnabled(Utils.toogle(mSyncing, true, false));
-        edit.setTitle(Utils.toogle(edit.getTitle(),
+        edit.setEnabled(Utils.toggle(mSyncing, true, false));
+        edit.setTitle(Utils.toggle(edit.getTitle(),
                 getString(R.string.edit), getString(R.string.cancel)));
 
         MenuItem save = actionMode.getMenu().findItem(R.id.save);
-        save.setEnabled(Utils.toogle(
+        save.setEnabled(Utils.toggle(
                 getString(R.string.edit).equals(edit.getTitle()), true, false));
 
         return true;
@@ -408,8 +411,10 @@ public class MapFragment extends Fragment implements GoogleMap.OnMyLocationChang
 
         Logger.log("FoursquareResponse="+foursquareResponse, MapFragment.class);
 
+        if (mDbHandlerThread==null) {
+            mDbHandlerThread=((MainActivity)getActivity()).getDbHandlerThread();
+        }
         mDbHandlerThread.sync(foursquareResponse.getResponse().getVenues());
-        mSyncing=false;
         getActivity().invalidateOptionsMenu();
 
     }

@@ -7,11 +7,14 @@ import android.support.v7.app.ActionBarActivity;
 import com.github.dkus.fourflicks.R;
 import com.github.dkus.fourflicks.api.db.DbHandlerThread;
 import com.github.dkus.fourflicks.api.service.ServiceHandler;
+import com.github.dkus.fourflicks.api.service.UploadHandlerThread;
 import com.github.dkus.fourflicks.fragment.MainFragment;
+import com.github.dkus.fourflicks.fragment.MyWebViewFragment;
 import com.github.dkus.fourflicks.fragment.TaskFragment;
 
 
-public class MainActivity extends ActionBarActivity {
+public class MainActivity extends ActionBarActivity
+        implements MyWebViewFragment.AuthorizationListener {
 
     private TaskFragment mTaskFragment;
 
@@ -24,16 +27,18 @@ public class MainActivity extends ActionBarActivity {
 
         FragmentManager fragmentManager = getSupportFragmentManager();
 
-        fragmentManager.beginTransaction()
-                .add(R.id.container, new MainFragment(), MainFragment.FRAGMENT_TAG)
-                .commit();
-
-        if (fragmentManager.findFragmentByTag(TaskFragment.FRAGMENT_TAG)==null) {
+        mTaskFragment = (TaskFragment)
+                fragmentManager.findFragmentByTag(TaskFragment.FRAGMENT_TAG);
+        if (mTaskFragment==null) {
             mTaskFragment = new TaskFragment();
             fragmentManager.beginTransaction()
                     .add(mTaskFragment, TaskFragment.FRAGMENT_TAG)
                     .commit();
         }
+
+        fragmentManager.beginTransaction()
+                .add(R.id.container, new MainFragment(), MainFragment.FRAGMENT_TAG)
+                .commit();
 
     }
 
@@ -43,5 +48,20 @@ public class MainActivity extends ActionBarActivity {
 
     public ServiceHandler getServiceHandler() {
         return mTaskFragment.getServiceHandler();
+    }
+
+    public UploadHandlerThread getUploadHandlerThread() {
+        return mTaskFragment.getUploadHandlerThread();
+    }
+
+    @Override
+    public void authorized(String token, String verifier) {
+
+        MainFragment mainFragment =
+                (MainFragment)getSupportFragmentManager()
+                        .findFragmentByTag(MainFragment.FRAGMENT_TAG);
+
+        mainFragment.authorized(token, verifier);
+
     }
 }

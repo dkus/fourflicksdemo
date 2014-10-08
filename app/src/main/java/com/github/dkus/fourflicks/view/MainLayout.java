@@ -32,22 +32,27 @@ public class MainLayout extends RelativeLayout {
         super.onAttachedToWindow();
 
         if (mAnimate) {
-            TranslateAnimation translateAnimation =
+            final TranslateAnimation translateAnimation =
                     new TranslateAnimation(
                             0, 0, 0, 0,
                             Animation.RELATIVE_TO_PARENT, -1, Animation.RELATIVE_TO_SELF, 0);
             translateAnimation.setInterpolator(new DecelerateInterpolator());
-            translateAnimation.setDuration(1000);
+            translateAnimation.setDuration(700);
 
-            TranslateAnimation translateAnimation2 =
+            final TranslateAnimation translateAnimation2 =
                     new TranslateAnimation(
                             0, 0, 0, 0,
                             Animation.RELATIVE_TO_PARENT, 1, Animation.RELATIVE_TO_SELF, 0);
             translateAnimation2.setInterpolator(new DecelerateInterpolator());
-            translateAnimation2.setDuration(1000);
+            translateAnimation2.setDuration(700);
 
-            findViewById(R.id.locations).startAnimation(translateAnimation);
-            findViewById(R.id.takePicture).startAnimation(translateAnimation2);
+            postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    findViewById(R.id.locations).startAnimation(translateAnimation);
+                    findViewById(R.id.takePicture).startAnimation(translateAnimation2);
+                }
+            }, 100);
 
             mAnimate=false;
         }
