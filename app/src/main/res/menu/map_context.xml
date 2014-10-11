@@ -5,18 +5,18 @@
 
     <item android:id="@+id/cRefresh"
         android:icon="@android:drawable/ic_menu_report_image"
-        android:title="Refresh"
         android:visible="false"
+        android:title="@string/refresh"
         app:showAsAction="always">
     </item>
 
     <item android:id="@+id/edit"
-        android:title="Dummy"
+        android:title="@string/dummy"
         app:showAsAction="always">
     </item>
 
     <item android:id="@+id/save"
-        android:title="Save"
+        android:title="@string/save"
         app:showAsAction="always"
         android:enabled="false">
     </item>

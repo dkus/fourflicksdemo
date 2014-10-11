@@ -48,4 +48,16 @@ public class Utils {
 
     }
 
+    public static int getScaleToFitFactor(int mW, int mH, int mIw, int mIh) {
+
+        int scaleFactor=1;
+        for(;(mIh/scaleFactor)>mH || (mIw/scaleFactor)>mW;) {
+            scaleFactor+=1;
+        }
+
+        scaleFactor+=(scaleFactor%2);
+        return scaleFactor;
+
+    }
+
 }

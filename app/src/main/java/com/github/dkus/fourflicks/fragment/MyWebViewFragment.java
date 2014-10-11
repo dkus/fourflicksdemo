@@ -49,6 +49,7 @@ public class MyWebViewFragment extends Fragment {
             mWebView.destroy();
         }
         mWebView = new WebView(getActivity());
+        mWebView.getSettings().setJavaScriptEnabled(true);
         mWebView.setWebViewClient(new MyWebViewClient());
         mWebView.loadUrl(getArguments().getString("url"));
 

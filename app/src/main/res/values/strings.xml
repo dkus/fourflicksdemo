@@ -7,7 +7,7 @@
 
     <string name="map_error">Device does not support Google Maps</string>
     <string name="my_location_error">Please enable location service</string>
-    <string name="camera_error">Device does not rear camera</string>
+    <string name="camera_error">Device does not have rear camera</string>
     <string name="camera_app_error">Camera app is required</string>
     <string name="file_error">Image file not created</string>
     <string name="foursquare_error">Service temporarily unavailable</string>
@@ -16,5 +16,11 @@
 
     <string name="edit">Edit</string>
     <string name="cancel">Cancel</string>
+
+    <string name="refresh">Refresh</string>
+    <string name="save">Save</string>
+    <string name="dummy">Dummy</string>
+
+    <string name="flickr_upload">Upload to Flickr</string>
 
 </resources>

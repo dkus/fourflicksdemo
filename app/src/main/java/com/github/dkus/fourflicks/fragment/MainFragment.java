@@ -19,11 +19,11 @@ import android.view.ViewGroup;
 import android.widget.Toast;
 
 import com.github.dkus.fourflicks.R;
-import com.github.dkus.fourflicks.activity.MainActivity;
-import com.github.dkus.fourflicks.api.service.UploadHandlerThread;
+import com.github.dkus.fourflicks.api.service.flickr.UploadHandlerThread;
 import com.github.dkus.fourflicks.util.Device;
 import com.github.dkus.fourflicks.util.Logger;
 import com.github.dkus.fourflicks.util.Utils;
+import com.github.dkus.fourflicks.view.MainLayout;
 
 import java.io.File;
 
@@ -32,6 +32,8 @@ public class MainFragment extends Fragment
         implements View.OnClickListener, ActionMode.Callback, Handler.Callback {
 
     public static final String FRAGMENT_TAG = MapFragment.class.getSimpleName();
+
+    private MainLayout mainLayout;
 
     private static final int CAMERA_REQUEST_CODE = 1;
 
@@ -50,21 +52,18 @@ public class MainFragment extends Fragment
 
         setHasOptionsMenu(true);
 
-        if (savedInstanceState!=null &&
-                savedInstanceState.getString("imagePath")!=null) {
-            mImagePath=savedInstanceState.getString("imagePath");
-        }
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_main, container, false);
 
-        view.findViewById(R.id.locations).setOnClickListener(this);
-        view.findViewById(R.id.takePicture).setOnClickListener(this);
+        mainLayout = (MainLayout)inflater.inflate(R.layout.fragment_main, container, false);
 
-        return view;
+        mainLayout.findViewById(R.id.locations).setOnClickListener(this);
+        mainLayout.findViewById(R.id.takePicture).setOnClickListener(this);
+
+        return mainLayout;
     }
 
     @Override
@@ -72,8 +71,18 @@ public class MainFragment extends Fragment
 
         super.onActivityCreated(savedInstanceState);
 
-        mUploadHandlerThread = ((MainActivity)getActivity()).getUploadHandlerThread();
+        mUploadHandlerThread = ((TaskFragment)getFragmentManager()
+                .findFragmentByTag(TaskFragment.FRAGMENT_TAG))
+                .getUploadHandlerThread();
         mUploadHandlerThread.setCallBack(new Handler(this));
+
+        if (savedInstanceState!=null) {
+            mUploading=savedInstanceState.getBoolean("uploading");
+        }
+
+        if (mUploading) {
+            mActionMode = ((ActionBarActivity)getActivity()).startSupportActionMode(this);
+        }
 
     }
 
@@ -90,7 +99,14 @@ public class MainFragment extends Fragment
 
         MenuItem refresh = menu.findItem(R.id.uploading);
         refresh.setVisible(Utils.toggle(!mUploading, true, false));
-        refresh.setActionView(R.layout.actionbar_progress);
+        if (refresh.isVisible()) {
+            refresh.setActionView(R.layout.actionbar_progress);
+        } else {
+            refresh.setActionView(null);
+        }
+
+        MenuItem upload = menu.findItem(R.id.upload);
+        upload.setEnabled(Utils.toggle(mUploading, true, false));
 
         return true;
 
@@ -102,8 +118,9 @@ public class MainFragment extends Fragment
         switch (menuItem.getItemId()) {
 
             case R.id.upload:
-                mUploadHandlerThread.uploadImage(mImagePath);
-                break;
+                if (!mUploading) {
+                    mUploadHandlerThread.uploadImage(mImagePath);
+                }
         }
         return true;
     }
@@ -113,6 +130,8 @@ public class MainFragment extends Fragment
 
         mUploading=false;
         mActionMode=null;
+        mImagePath=null;
+        mainLayout.hideImage();
 
     }
 
@@ -164,6 +183,7 @@ public class MainFragment extends Fragment
         if (requestCode == CAMERA_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
            addImageToGallery();
             mActionMode = ((ActionBarActivity)getActivity()).startSupportActionMode(this);
+            mainLayout.showImage(mImagePath);
             return;
         }
 
@@ -183,9 +203,7 @@ public class MainFragment extends Fragment
     @Override
     public void onSaveInstanceState(Bundle outState) {
 
-        if (mImagePath!=null) {
-            outState.putString("imagePath", mImagePath);
-        }
+        outState.putBoolean("uploading", mUploading);
 
         super.onSaveInstanceState(outState);
     }
@@ -207,6 +225,8 @@ public class MainFragment extends Fragment
                 }
                 Toast.makeText(getActivity(), getString(R.string.flickr_done),
                         Toast.LENGTH_SHORT).show();
+                mainLayout.hideImage();
+                mImagePath=null;
                 break;
             case R.id.upload_authorize:
 

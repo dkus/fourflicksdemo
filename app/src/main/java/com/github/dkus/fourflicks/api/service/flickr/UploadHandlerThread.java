@@ -1,4 +1,4 @@
-package com.github.dkus.fourflicks.api.service;
+package com.github.dkus.fourflicks.api.service.flickr;
 
 import android.content.Context;
 import android.content.SharedPreferences;

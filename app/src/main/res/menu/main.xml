@@ -9,7 +9,7 @@
     </item>
 
     <item android:id="@+id/upload"
-        android:title="Upload to Flickr"
+        android:title="@string/flickr_upload"
         app:showAsAction="always">
     </item>
 

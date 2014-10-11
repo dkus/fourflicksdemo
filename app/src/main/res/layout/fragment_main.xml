@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:id="@+id/mainLayout"
     android:gravity="center">
 
     <Button
@@ -20,5 +21,10 @@
         android:layout_below="@id/locations"
         android:layout_marginTop="20dp"
         android:text="Take picture"/>
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/image"/>
 
 </com.github.dkus.fourflicks.view.MainLayout>

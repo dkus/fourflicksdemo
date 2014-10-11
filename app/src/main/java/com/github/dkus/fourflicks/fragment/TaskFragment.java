@@ -5,7 +5,7 @@ import android.support.v4.app.Fragment;
 
 import com.github.dkus.fourflicks.api.db.DbHandlerThread;
 import com.github.dkus.fourflicks.api.service.ServiceHandler;
-import com.github.dkus.fourflicks.api.service.UploadHandlerThread;
+import com.github.dkus.fourflicks.api.service.flickr.UploadHandlerThread;
 
 
 public class TaskFragment extends Fragment {

@@ -17,7 +17,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.github.dkus.fourflicks.R;
-import com.github.dkus.fourflicks.activity.MainActivity;
 import com.github.dkus.fourflicks.api.db.DbHandlerThread;
 import com.github.dkus.fourflicks.api.model.Venue;
 import com.github.dkus.fourflicks.api.service.ServiceHandler;
@@ -113,11 +112,24 @@ public class MapFragment extends Fragment
 
         super.onActivityCreated(savedInstanceState);
 
-        mServiceHandler = ((MainActivity)getActivity()).getServiceHandler();
-        mDbHandlerThread = ((MainActivity)getActivity()).getDbHandlerThread();
+        mServiceHandler =  ((TaskFragment)getFragmentManager()
+                .findFragmentByTag(TaskFragment.FRAGMENT_TAG))
+                .getServiceHandler();
+        mDbHandlerThread = ((TaskFragment)getFragmentManager()
+                .findFragmentByTag(TaskFragment.FRAGMENT_TAG))
+                .getDbHandlerThread();
 
         mHandler=new Handler(this);
         mDbHandlerThread.setCallBack(mHandler);
+
+        if (savedInstanceState!=null &&
+                savedInstanceState.getString("syncing")!=null) {
+            mSyncing=savedInstanceState.getBoolean("syncing");
+        }
+
+        if (mSyncing) {
+            mActionMode = ((ActionBarActivity)getActivity()).startSupportActionMode(this);
+        }
 
     }
 
@@ -344,7 +356,11 @@ public class MapFragment extends Fragment
 
         MenuItem refresh = menu.findItem(R.id.cRefresh);
         refresh.setVisible(Utils.toggle(!mSyncing, true, false));
-        refresh.setActionView(R.layout.actionbar_progress);
+        if (refresh.isVisible()) {
+            refresh.setActionView(R.layout.actionbar_progress);
+        } else {
+            refresh.setActionView(null);
+        }
 
         MenuItem edit = menu.findItem(R.id.edit);
         edit.setEnabled(Utils.toggle(mSyncing, true, false));
@@ -407,12 +423,22 @@ public class MapFragment extends Fragment
     }
 
     @Override
+    public void onSaveInstanceState(Bundle outState) {
+
+        outState.putBoolean("syncing", mSyncing);
+
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
     public void success(FoursquareResponse foursquareResponse, Response response) {
 
         Logger.log("FoursquareResponse="+foursquareResponse, MapFragment.class);
 
         if (mDbHandlerThread==null) {
-            mDbHandlerThread=((MainActivity)getActivity()).getDbHandlerThread();
+            mDbHandlerThread=((TaskFragment)getFragmentManager()
+                    .findFragmentByTag(TaskFragment.FRAGMENT_TAG))
+                    .getDbHandlerThread();
         }
         mDbHandlerThread.sync(foursquareResponse.getResponse().getVenues());
         getActivity().invalidateOptionsMenu();
@@ -450,6 +476,8 @@ public class MapFragment extends Fragment
     private String prepareServiceCall() {
 
         VisibleRegion visibleRegion = mMap.getProjection().getVisibleRegion();
+
+        if (mLatLng==null || visibleRegion==null) return null;
 
         if (!visibleRegion.latLngBounds.contains(mLatLng)) {
             Logger.log("My location is out of bound");
