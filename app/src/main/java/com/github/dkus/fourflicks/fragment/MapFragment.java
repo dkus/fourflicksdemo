@@ -1,5 +1,6 @@
 package com.github.dkus.fourflicks.fragment;
 
+import android.content.Context;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
@@ -13,6 +14,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -67,6 +69,8 @@ public class MapFragment extends Fragment
     private ActionMode mActionMode;
 
     private boolean mSyncing;
+    private boolean mEditing;
+    private boolean mInScopeToSync;
 
     private Toast mToast;
 
@@ -83,6 +87,15 @@ public class MapFragment extends Fragment
 
         setHasOptionsMenu(true);
 
+        mServiceHandler =  ((TaskFragment)getFragmentManager()
+                .findFragmentByTag(TaskFragment.FRAGMENT_TAG))
+                .getServiceHandler();
+        mDbHandlerThread = ((TaskFragment)getFragmentManager()
+                .findFragmentByTag(TaskFragment.FRAGMENT_TAG))
+                .getDbHandlerThread();
+
+        mHandler=new Handler(this);
+        mDbHandlerThread.setCallBack(mHandler);
         mBoundMarkers.clear();
 
     }
@@ -112,24 +125,10 @@ public class MapFragment extends Fragment
 
         super.onActivityCreated(savedInstanceState);
 
-        mServiceHandler =  ((TaskFragment)getFragmentManager()
-                .findFragmentByTag(TaskFragment.FRAGMENT_TAG))
-                .getServiceHandler();
-        mDbHandlerThread = ((TaskFragment)getFragmentManager()
-                .findFragmentByTag(TaskFragment.FRAGMENT_TAG))
-                .getDbHandlerThread();
-
-        mHandler=new Handler(this);
-        mDbHandlerThread.setCallBack(mHandler);
-
-        if (savedInstanceState!=null &&
-                savedInstanceState.getString("syncing")!=null) {
+        if (savedInstanceState!=null) {
             mSyncing=savedInstanceState.getBoolean("syncing");
         }
-
-        if (mSyncing) {
-            mActionMode = ((ActionBarActivity)getActivity()).startSupportActionMode(this);
-        }
+        mInScopeToSync=true;
 
     }
 
@@ -272,18 +271,14 @@ public class MapFragment extends Fragment
                             new LatLng(venue.getLocation().getLat(),
                                     venue.getLocation().getLng())));
                     mBoundMarkers.put(latLng, venue);
-                } else {
-                    if (mBoundMarkers.containsKey(latLng)) {
-                        mBoundMarkers.remove(latLng);
-                    }
                 }
                 break;
             case R.id.database_synced:
                 mSyncing=false;
-                Logger.log("Bounded markers="+mBoundMarkers.size());
                 if (mActionMode!=null) {
                     mActionMode.invalidate();
                 }
+                getActivity().invalidateOptionsMenu();
                 break;
         }
 
@@ -324,6 +319,15 @@ public class MapFragment extends Fragment
             mActionMode = ((ActionBarActivity)getActivity()).startSupportActionMode(this);
         }
         mClicked=marker;
+
+        if (mEditInfoWindowLayout!=null
+                && mEditInfoWindowLayout.getVisibility()==View.VISIBLE) {
+            mEditInfoWindowLayout.setName(
+                    mBoundMarkers.get(mClicked.getPosition()).getName());
+            mEditInfoWindowLayout.setAddress(
+                    mBoundMarkers.get(mClicked.getPosition()).getLocation().getAddress());
+        }
+
         return false;
 
     }
@@ -336,10 +340,13 @@ public class MapFragment extends Fragment
             mActionMode=null;
         }
 
-        if (mEditInfoWindowLayout!=null && mEditInfoWindowLayout.getVisibility()==View.VISIBLE) {
+        if (mEditInfoWindowLayout!=null
+                && mEditInfoWindowLayout.getVisibility()==View.VISIBLE) {
             mEditInfoWindowLayout.toggleAnimation();
         }
         mClicked=null;
+
+        hideKeyBoard();
 
     }
 
@@ -364,12 +371,12 @@ public class MapFragment extends Fragment
 
         MenuItem edit = menu.findItem(R.id.edit);
         edit.setEnabled(Utils.toggle(mSyncing, true, false));
-        edit.setTitle(Utils.toggle(edit.getTitle(),
-                getString(R.string.edit), getString(R.string.cancel)));
+        edit.setTitle(!mEditing ?
+                getString(R.string.edit) : getString(R.string.cancel));
 
         MenuItem save = actionMode.getMenu().findItem(R.id.save);
         save.setEnabled(Utils.toggle(
-                getString(R.string.edit).equals(edit.getTitle()), true, false));
+                edit.getTitle().equals(getString(R.string.edit)), true, false));
 
         return true;
 
@@ -382,20 +389,23 @@ public class MapFragment extends Fragment
 
             case R.id.edit:
 
+                mEditing = menuItem.getTitle().equals(getString(R.string.edit));
+
                 if(mClicked!=null) {
+                    mSyncing=false;
                     mEditInfoWindowLayout.setName(
                             mBoundMarkers.get(mClicked.getPosition()).getName());
                     mEditInfoWindowLayout.setAddress(
                             mBoundMarkers.get(mClicked.getPosition()).getLocation().getAddress());
                     mEditInfoWindowLayout.toggleAnimation();
-                    mSyncing=false;
-                    actionMode.invalidate();
                 }
+                actionMode.invalidate();
 
                 break;
             case R.id.save:
 
                 mSyncing=true;
+                mEditing=false;
                 actionMode.invalidate();
                 mBoundMarkers.get(mClicked.getPosition())
                         .setName(mEditInfoWindowLayout.getName());
@@ -408,6 +418,8 @@ public class MapFragment extends Fragment
                 break;
         }
 
+        hideKeyBoard();
+
         return true;
     }
 
@@ -415,7 +427,7 @@ public class MapFragment extends Fragment
     public void onDestroyActionMode(ActionMode actionMode) {
 
         mActionMode=null;
-
+        mEditing=false;
         if (mEditInfoWindowLayout!=null && mEditInfoWindowLayout.getVisibility()==View.VISIBLE) {
             mEditInfoWindowLayout.toggleAnimation();
         }
@@ -441,7 +453,6 @@ public class MapFragment extends Fragment
                     .getDbHandlerThread();
         }
         mDbHandlerThread.sync(foursquareResponse.getResponse().getVenues());
-        getActivity().invalidateOptionsMenu();
 
     }
 
@@ -450,23 +461,28 @@ public class MapFragment extends Fragment
 
         Logger.log("FoursquareResponse error", MapFragment.class, retrofitError);
         mSyncing=false;
-        getActivity().invalidateOptionsMenu();
-        mToast=Toast.makeText(getActivity(), R.string.foursquare_error, Toast.LENGTH_SHORT);
-        mToast.show();
+        if (mInScopeToSync) {
+            getActivity().invalidateOptionsMenu();
+            mToast=Toast.makeText(getActivity(), R.string.foursquare_error, Toast.LENGTH_SHORT);
+            mToast.show();
+        }
 
     }
 
     private void callService(final String radius) {
 
         if (!mSyncing && radius!=null) {
+
             mHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    mServiceHandler.getFoursquareService().getNearbyObjects(
-                            Utils.formatLocation(mLatLng.latitude, mLatLng.longitude),
-                            radius, MapFragment.this);
-                    mSyncing=true;
-                    getActivity().invalidateOptionsMenu();
+                    if (mInScopeToSync) {
+                        mServiceHandler.getFoursquareService().getNearbyObjects(
+                                Utils.formatLocation(mLatLng.latitude, mLatLng.longitude),
+                                radius, MapFragment.this);
+                        mSyncing=true;
+                        getActivity().invalidateOptionsMenu();
+                    }
                 }
             }, 700);
         }
@@ -504,11 +520,15 @@ public class MapFragment extends Fragment
                 mLatLng.latitude, mLatLng.longitude, mDistance);
         double d4=mDistance[0];
 
-        double radius = Math.max(Math.max(d1, d2), Math.min(d3, d4));
+        return String.valueOf(Math.max(Math.max(d1, d2), Math.min(d3, d4)));
 
-        Logger.log("radius="+radius, MapFragment.class);
+    }
 
-        return String.valueOf(radius);
+    private void hideKeyBoard() {
+
+        InputMethodManager inputMethodManager =
+                (InputMethodManager)getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
+        inputMethodManager.hideSoftInputFromWindow(getView().getWindowToken(), 0);
 
     }
 

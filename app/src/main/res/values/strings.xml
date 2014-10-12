@@ -23,4 +23,9 @@
 
     <string name="flickr_upload">Upload to Flickr</string>
 
+    <string name="locations">Locations</string>
+    <string name="takePicture">Take picture</string>
+    <string name="name">Name: </string>
+    <string name="address">Address: </string>
+
 </resources>

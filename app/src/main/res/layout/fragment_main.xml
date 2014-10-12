@@ -12,7 +12,7 @@
         android:id="@+id/locations"
         android:layout_width="200dp"
         android:layout_height="60dp"
-        android:text="Locations"/>
+        android:text="@string/locations"/>
 
     <Button
         android:id="@+id/takePicture"
@@ -20,7 +20,7 @@
         android:layout_height="60dp"
         android:layout_below="@id/locations"
         android:layout_marginTop="20dp"
-        android:text="Take picture"/>
+        android:text="@string/takePicture"/>
 
     <ImageView
         android:layout_width="wrap_content"

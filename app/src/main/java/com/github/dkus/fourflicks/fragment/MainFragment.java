@@ -21,7 +21,6 @@ import android.widget.Toast;
 import com.github.dkus.fourflicks.R;
 import com.github.dkus.fourflicks.api.service.flickr.UploadHandlerThread;
 import com.github.dkus.fourflicks.util.Device;
-import com.github.dkus.fourflicks.util.Logger;
 import com.github.dkus.fourflicks.util.Utils;
 import com.github.dkus.fourflicks.view.MainLayout;
 
@@ -52,6 +51,11 @@ public class MainFragment extends Fragment
 
         setHasOptionsMenu(true);
 
+        mUploadHandlerThread = ((TaskFragment)getFragmentManager()
+                .findFragmentByTag(TaskFragment.FRAGMENT_TAG))
+                .getUploadHandlerThread();
+        mUploadHandlerThread.setCallBack(new Handler(this));
+
     }
 
     @Override
@@ -71,17 +75,17 @@ public class MainFragment extends Fragment
 
         super.onActivityCreated(savedInstanceState);
 
-        mUploadHandlerThread = ((TaskFragment)getFragmentManager()
-                .findFragmentByTag(TaskFragment.FRAGMENT_TAG))
-                .getUploadHandlerThread();
-        mUploadHandlerThread.setCallBack(new Handler(this));
-
         if (savedInstanceState!=null) {
-            mUploading=savedInstanceState.getBoolean("uploading");
-        }
 
-        if (mUploading) {
-            mActionMode = ((ActionBarActivity)getActivity()).startSupportActionMode(this);
+            if (savedInstanceState.getString("imagePath")!=null) {
+                mImagePath = savedInstanceState.getString("imagePath");
+            }
+
+            mUploading=savedInstanceState.getBoolean("uploading");
+
+            if (mUploading || savedInstanceState.getBoolean("actionMode")) {
+                mActionMode = ((ActionBarActivity)getActivity()).startSupportActionMode(this);
+            }
         }
 
     }
@@ -170,9 +174,9 @@ public class MainFragment extends Fragment
                             Toast.LENGTH_SHORT).show();
                     return;
                 }
+                mImagePath=file.getAbsolutePath();
                 intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(file));
                 startActivityForResult(intent, CAMERA_REQUEST_CODE);
-                mImagePath=file.getAbsolutePath();
             }
         }
     }
@@ -182,9 +186,13 @@ public class MainFragment extends Fragment
 
         if (requestCode == CAMERA_REQUEST_CODE && resultCode == Activity.RESULT_OK) {
            addImageToGallery();
-            mActionMode = ((ActionBarActivity)getActivity()).startSupportActionMode(this);
             mainLayout.showImage(mImagePath);
+            String imagePath = mImagePath;
+            mActionMode = ((ActionBarActivity)getActivity()).startSupportActionMode(this);
+            mImagePath = imagePath;
             return;
+        } else {
+            mImagePath=null;
         }
 
         super.onActivityResult(requestCode, resultCode, data);
@@ -204,6 +212,10 @@ public class MainFragment extends Fragment
     public void onSaveInstanceState(Bundle outState) {
 
         outState.putBoolean("uploading", mUploading);
+        outState.putBoolean("actionMode", mActionMode!=null);
+        if (mImagePath!=null) {
+            outState.putString("imagePath", mImagePath);
+        }
 
         super.onSaveInstanceState(outState);
     }
@@ -221,12 +233,10 @@ public class MainFragment extends Fragment
             case R.id.uploaded:
                 mUploading=false;
                 if (mActionMode!=null) {
-                    mActionMode.invalidate();
+                    mActionMode.finish();
                 }
                 Toast.makeText(getActivity(), getString(R.string.flickr_done),
                         Toast.LENGTH_SHORT).show();
-                mainLayout.hideImage();
-                mImagePath=null;
                 break;
             case R.id.upload_authorize:
 
@@ -240,6 +250,9 @@ public class MainFragment extends Fragment
             case R.id.upload_error:
                 Toast.makeText(getActivity(), getString(R.string.flickr_error),
                         Toast.LENGTH_SHORT).show();
+                break;
+            case R.id.upload_error_invalid_token:
+                mUploadHandlerThread.uploadImage(mImagePath);
                 break;
         }
 

@@ -17,25 +17,51 @@
         android:visibility="gone"
         android:background="@android:color/white">
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/editNameLabel"
+            android:text="@string/name"
+            android:layout_marginTop="8dp"
+            android:paddingLeft="5dp"
+            android:paddingRight="5dp"
+            android:textStyle="bold"/>
+
         <EditText
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/editName"
-            android:layout_marginTop="8dp"
             android:textSize="12sp"
-            android:inputType="text"
-            android:maxWidth="180dp"/>
+            android:maxWidth="180dp"
+            android:paddingRight="5dp"
+            android:layout_toEndOf="@id/editNameLabel"
+            android:layout_toRightOf="@id/editNameLabel"
+            android:layout_alignBottom="@id/editNameLabel"
+            android:inputType="text"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/editAddressLabel"
+            android:text="@string/address"
+            android:layout_marginTop="15dp"
+            android:layout_marginBottom="8dp"
+            android:paddingLeft="5dp"
+            android:paddingRight="5dp"
+            android:layout_below="@id/editNameLabel"
+            android:textStyle="bold"/>
 
         <EditText
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/editAddress"
-            android:layout_below="@id/editName"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="8dp"
             android:textSize="12sp"
-            android:inputType="text"
-            android:maxWidth="180dp"/>
+            android:maxWidth="180dp"
+            android:paddingRight="5dp"
+            android:layout_toEndOf="@id/editAddressLabel"
+            android:layout_toRightOf="@id/editAddressLabel"
+            android:layout_alignBottom="@id/editAddressLabel"
+            android:inputType="text"/>
 
     </com.github.dkus.fourflicks.view.EditInfoWindowLayout>
 

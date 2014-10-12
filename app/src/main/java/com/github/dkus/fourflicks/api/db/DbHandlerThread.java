@@ -18,7 +18,8 @@ import java.util.List;
 
 public class DbHandlerThread extends HandlerThread implements Handler.Callback {
 
-    private Handler mReceiver, mCallback;
+    private Handler mReceiver;
+    private volatile Handler mCallback;
 
     private DbHelper mDbHelper;
     private SQLiteDatabase mDb;

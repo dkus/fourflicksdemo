@@ -31,6 +31,8 @@ public class UploadHandlerThread extends HandlerThread implements Handler.Callba
     private String mImagePath;
     private String mTokenSecret;
 
+    private boolean isUploadCancelled;
+
     public UploadHandlerThread(Context context) {
 
         super("UploadHandlerThread");
@@ -89,11 +91,13 @@ public class UploadHandlerThread extends HandlerThread implements Handler.Callba
 
     }
 
+
     public void quitUploader() {
 
         quitUploader(mReceiver);
 
     }
+
 
     private void uploadImage(Handler handler) {
 
@@ -148,8 +152,14 @@ public class UploadHandlerThread extends HandlerThread implements Handler.Callba
 
     private void uploadError() {
 
+        uploadError(false);
+
+    }
+
+    private void uploadError(boolean newTokenRequired) {
+
         Message msg = Message.obtain();
-        msg.what = R.id.upload_error;
+        msg.what = newTokenRequired ? R.id.upload_error_invalid_token : R.id.upload_error;
         mCallback.sendMessage(msg);
 
     }
@@ -220,8 +230,6 @@ public class UploadHandlerThread extends HandlerThread implements Handler.Callba
 
         RequestContext.getRequestContext().setOAuth(oAuth);
 
-        Logger.log("doInBackground imagePath="+mImagePath);
-
         UploadMetaData uploadMetaData = new UploadMetaData();
         uploadMetaData.setDescription("test");
 
@@ -232,14 +240,24 @@ public class UploadHandlerThread extends HandlerThread implements Handler.Callba
                     mImagePath.substring(mImagePath.lastIndexOf("/") + 1),
                     new FileInputStream(mImagePath),
                     uploadMetaData);
-            uploaded();
+            if (!isUploadCancelled) uploaded();
 
         } catch (IOException e) {
             Logger.log("IOException", UploadHandlerThread.class, e);
             uploadError();
         } catch (FlickrException e) {
             Logger.log("FlickrException", UploadHandlerThread.class, e);
-            uploadError();
+            if ("98".equals(e.getErrorCode())) {
+
+                mSharedPreferences.edit()
+                        .remove("oauth_token")
+                        .commit();
+                mSharedPreferences.edit()
+                        .remove("oauth_token_secret")
+                        .commit();
+                uploadError(true);
+            }
+
         } catch (SAXException e) {
             Logger.log("SAXException", UploadHandlerThread.class, e);
             uploadError();

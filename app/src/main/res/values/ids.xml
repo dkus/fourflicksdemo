@@ -13,8 +13,10 @@
     <item type="id" name="uploading"/>
     <item type="id" name="uploaded"/>
     <item type="id" name="upload_error"/>
+    <item type="id" name="upload_error_invalid_token"/>
     <item type="id" name="uploader_quit"/>
     <item type="id" name="upload_authorize"/>
     <item type="id" name="upload_authorized"/>
+    <item type="id" name="upload_cancel"/>
 
 </resources>

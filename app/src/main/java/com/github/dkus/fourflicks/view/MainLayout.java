@@ -16,7 +16,6 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.github.dkus.fourflicks.R;
-import com.github.dkus.fourflicks.util.Logger;
 import com.github.dkus.fourflicks.util.Utils;
 
 import java.io.IOException;
@@ -79,15 +78,15 @@ public class MainLayout extends RelativeLayout {
         SavedState savedState = (SavedState)state;
         super.onRestoreInstanceState(savedState.getSuperState());
 
-        mImageShowing = savedState.isImageShowing();
-        mImagePath = savedState.getImagePath();
+        final String imagePath = savedState.getImagePath();
+        final boolean imageShowing = savedState.isImageShowing();
 
         postDelayed(new Runnable() {
             @Override
             public void run() {
-                if (mImageShowing) showImage(mImagePath);
+                if (imageShowing) showImage(imagePath);
             }
-        }, 20);
+        }, 32);
 
     }
 
@@ -179,9 +178,6 @@ public class MainLayout extends RelativeLayout {
 
             boolean shouldSwap = mOrientation==ExifInterface.ORIENTATION_ROTATE_90 ||
                     mOrientation==ExifInterface.ORIENTATION_ROTATE_270;
-
-            Logger.log("doInBackground mLwidth="+mLwidth+", mLheight="+mLheight,
-                    MainLayout.class);
 
             options.inSampleSize =
                     Utils.getScaleToFitFactor(mLwidth, mLheight,
